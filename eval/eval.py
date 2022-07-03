@@ -4,13 +4,22 @@ import pickle
 import numpy as np
 import sklearn
 import torch
+from torchvision import transforms
 from PIL import Image
 from scipy import interpolate
 from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold
+import argparse
+from models import get_model
+
+
+def run_evaluation(args):
+    # dataloader = get_dataloader(args)
+    network = get_model('r50')
+
 
 """ Class loads multiple validation_sets """
-class MultiValidationSet(torch.data.Dataset):
+class MultiValidationSet(torch.utils.data.Dataset):
     def __init__(self, wf42_root, set_names, transforms):
         self.transforms = transforms
         self.set_names = set_names
@@ -37,10 +46,14 @@ class MultiValidationSet(torch.data.Dataset):
         return len(self.imglist)
 
 
-def get_dataloader(self, wf42_root, set_names):
-    dataset = MultiValidationSet(wf42_root, set_names, transforms)
-
-
+def get_dataloader(args):
+    transform = transforms.Compose([
+             transforms.ToTensor(),
+             transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+             ])
+    dataset = MultiValidationSet(args.data_root, args.set_names, transform)
+    dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=args.batch_size)
+    return dataloader
 
 
 
@@ -202,32 +215,7 @@ def evaluate(embeddings, actual_issame, nrof_folds=10, pca=0):
                                       nrof_folds=nrof_folds)
     return tpr, fpr, accuracy, val, val_std, far
 
-@torch.no_grad()
-def load_bin(path, image_size):
-    try:
-        with open(path, 'rb') as f:
-            bins, issame_list = pickle.load(f)  # py2
-    except UnicodeDecodeError as e:
-        with open(path, 'rb') as f:
-            bins, issame_list = pickle.load(f, encoding='bytes')  # py3
-    data_list = []
-    for flip in [0, 1]:
-        data = torch.empty((len(issame_list) * 2, 3, image_size[0], image_size[1]))
-        data_list.append(data)
-    for idx in range(len(issame_list) * 2):
-        _bin = bins[idx]
-        img = mx.image.imdecode(_bin)
-        if img.shape[1] != image_size[0]:
-            img = mx.image.resize_short(img, image_size[0])
-        img = nd.transpose(img, axes=(2, 0, 1))
-        for flip in [0, 1]:
-            if flip == 1:
-                img = mx.ndarray.flip(data=img, axis=2)
-            data_list[flip][idx][:] = torch.from_numpy(img.asnumpy())
-        if idx % 1000 == 0:
-            print('loading bin', idx)
-    print(data_list[0].shape)
-    return data_list, issame_list
+
 
 @torch.no_grad()
 def test(data_set, backbone, batch_size, nfolds=10):
@@ -278,6 +266,3 @@ def test(data_set, backbone, batch_size, nfolds=10):
     _, _, accuracy, val, val_std, far = evaluate(embeddings, issame_list, nrof_folds=nfolds)
     acc2, std2 = np.mean(accuracy), np.std(accuracy)
     return acc1, std1, acc2, std2, _xnorm, embeddings_list
-
-if __name__ == "__main__":
-    ...
