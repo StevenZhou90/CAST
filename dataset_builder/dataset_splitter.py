@@ -1,6 +1,26 @@
 import numpy as np
 import os
 
+
+def filter_train_set(current_mask):
+    train_idx_mask = np.load('../data/webface12m_idxs.npy')
+    return current_mask * train_idx_mask
+
+# make new directory: validation_sets/set#
+def save_path():
+    existing = os.listdir('../validation_sets')
+    current_set = max([int(x[-1]) for x in existing])
+    current_set += 1
+    dir_name = os.path.join('..', 'validation_set', 'set'+str(current_set))
+    os.makedir(dir_name, exist_ok=True)
+    return dir_name
+
+""" write to validation_sets/set#/description.txt
+    call for each attribute filtered """
+def write_description(dir_name, attribute_desc):
+    with open(os.path.join(dir_name, 'description.txt', 'a')) as f:
+        f.write(desc + '\n')
+
 newArr = np.load('totalAttrList.npy')
 paths = np.load('ids.npy')
 
@@ -22,7 +42,7 @@ while r1!=5:
         atr = int(input('Enter the integer for which attribute you would like to filter by - (0:5_o_Clock_Shadow, 1:Arched_Eyebrows, 2:Attractive, 3:Bags_Under_Eyes, 4:Bald, 5:Bangs, 6:Big_Lips, 7:Big_Nose, 8:Black_Hair, 9:Blond_Hair, 10:Blurry, 11:Brown_Hair, 12:Bushy_Eyebrows, 13:Chubby, 14:Double_Chin, 15:Eyeglasses, 16:Goatee, 17:Gray_Hair, 18:Heavy_Makeup, 19:High_Cheekbones, 20:Male, 21:Mouth_Slightly_Open, 22:Mustache, 23:Narrow_Eyes, 24:No_Beard, 25:Oval_Face, 26:Pale_Skin, 27:Pointy_Nose, 28:Receding_Hairline, 29:Rosy_Cheeks, 30:Sideburns, 31:Smiling, 32:Straight_Hair, 33:Wavy_Hair, 34:Wearing_Earrings, 35:Wearing_Hat, 36:Wearing_Lipstick, 37:Wearing_Necklace, 38:Wearing_Necktie, 39:Young): \n'))
         section = int(input('Enter the integer corresponding to which section of the dataset you would like to extract - (1:top, 2:middle, 3:bottom): \n'))
         percent = float(input("Enter the percent of values you would like to extract from the previously stated section (0-1): \n"))
-        
+
         if(section==1):
             upper = newArr.shape[0]
             bottom = round(newArr.shape[0]-(percent*newArr.shape[0]))
@@ -36,7 +56,7 @@ while r1!=5:
             bottom = 0
             idx=ranks[bottom:upper,atr]
 
-        mask = np.zeros(newArr.shape[0], dtype=bool) 
+        mask = np.zeros(newArr.shape[0], dtype=bool)
         mask[idx] = True
         newArr = newArr[mask]
         paths = paths[mask]
@@ -64,11 +84,11 @@ while r1!=5:
                 bottom = 0
                 idx=ranks[bottom:upper,atr]
 
-            mask = np.zeros(newArr.shape[0], dtype=bool) 
+            mask = np.zeros(newArr.shape[0], dtype=bool)
             mask[idx] = True
             newArr = newArr[mask]
             paths = paths[mask]
-          
+
         elif(method==2):
             age = newArr[:,42]
             lower = int(input("Enter the bottom range age you would like: \n"))
@@ -101,7 +121,7 @@ while r1!=5:
                     upper = round((percent*newArr.shape[0]))
                     bottom = 0
                     idx=ranks[bottom:upper,atr]
-                mask = np.zeros(newArr.shape[0], dtype=bool) 
+                mask = np.zeros(newArr.shape[0], dtype=bool)
                 mask[idx] = True
                 newArr = newArr[mask]
                 paths = paths[mask]
@@ -124,7 +144,7 @@ while r1!=5:
                     upper = round((percent*newArr.shape[0]))
                     bottom = 0
                     idx=ranks[bottom:upper,atr]
-                mask = np.zeros(newArr.shape[0], dtype=bool) 
+                mask = np.zeros(newArr.shape[0], dtype=bool)
                 mask[idx] = True
                 newArr = newArr[mask]
                 paths = paths[mask]
@@ -170,7 +190,7 @@ while r1!=5:
             bottom = 0
             idx=ranks[bottom:upper,50+attr]
 
-        mask = np.zeros(newArr.shape[0], dtype=bool) 
+        mask = np.zeros(newArr.shape[0], dtype=bool)
         mask[idx] = True
         newArr = newArr[mask]
         paths = paths[mask]
@@ -185,7 +205,7 @@ for i in range(1, paths.shape[0]):
         continue
     else:    # start of new id
         id_change.append(i)
-        prev = paths[i]   
+        prev = paths[i]
 
 used_paths = np.ones(len(paths), dtype = bool)
 
