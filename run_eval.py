@@ -1,5 +1,8 @@
 from eval.eval import run_evaluation
 import argparse
+import glob
+from sys import exit
+import os
 
 if __name__ == "__main__":
 
@@ -12,4 +15,10 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # run evaluation module
-    run_evaluation(args)
+
+    ### run iqa/fiqa eval
+    sets = glob.glob('iqa_test_sets/*/*.list')
+    sets = list(sets)
+    sets.sort(key=lambda x: os.path.basename(os.path.dirname(x)), reverse=False)
+    assert len(sets) == 500
+    run_evaluation(args, sets[:1])

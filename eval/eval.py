@@ -11,11 +11,20 @@ from sklearn.decomposition import PCA
 from sklearn.model_selection import KFold
 import argparse
 from models import get_model
+from time import time
+from sys import exit
+import mxnet as mx
+from mxnet import ndarray as nd
 
 
-def run_evaluation(args):
-    # dataloader = get_dataloader(args)
-    network = get_model('r50')
+def run_evaluation(args, set_list=None):
+    dataloader = get_dataloader(args, set_list)
+    print(len(dataloader))
+    network = get_model('r18').cuda()
+    multi_test(dataloader, network, args.batch_size, set_list)
+
+    # data = load_bin('/home/wes/Data/face/data/ms1m/other/lfw.bin', (112,112))
+    # test(data, network, 256)
 
 
 """ Class loads multiple validation_sets """
@@ -26,7 +35,8 @@ class MultiValidationSet(torch.utils.data.Dataset):
         self.pairs = []
         self.imglist = []
         for name in set_names:
-            list_pth = os.path.join('validation_sets', name+'.list')
+            # list_pth = os.path.join('validation_sets', name+'.list')
+            list_pth = name
             with open(list_pth, 'r') as f:
                 for line in f:
                     line = line.strip()
@@ -38,20 +48,40 @@ class MultiValidationSet(torch.utils.data.Dataset):
                     self.pairs.append(int(line[2]))
 
     def __getitem__(self, idx):
-        img = Image.open(self.imglist[idx])
+        # img = Image.open(self.imglist[idx])
+        img = np.ones((112, 112, 3), dtype=np.float32)
         img = self.transforms(img)
         return img
 
     def __len__(self):
         return len(self.imglist)
 
+# class Synthetic(torch.utils.data.Dataset):
+#     def __init__(self):
+#         super(Synthetic, self).__init__()
+#         img = np.random.randint(0, 255, size=(112, 112, 3), dtype=np.int32)
+#         img = np.transpose(img, (2, 0, 1))
+#         img = torch.from_numpy(img).squeeze(0).float()
+#         img = ((img / 255) - 0.5) / 0.5
+#         self.img = img
+#         self.label = 1
+#
+#     def __getitem__(self, index):
+#         return self.img
+#
+#     def __len__(self):
+#         return 100000
 
-def get_dataloader(args):
+
+def get_dataloader(args, set_list):
     transform = transforms.Compose([
              transforms.ToTensor(),
              transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
              ])
-    dataset = MultiValidationSet(args.data_root, args.set_names, transform)
+    if not set_list:
+        set_list = args.net_name
+    dataset = MultiValidationSet(args.data_root, set_list, transform)
+    # dataset = Synthetic()
     dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=args.batch_size)
     return dataloader
 
@@ -149,6 +179,8 @@ def calculate_val(thresholds,
     assert (embeddings1.shape[0] == embeddings2.shape[0])
     assert (embeddings1.shape[1] == embeddings2.shape[1])
     nrof_pairs = min(len(actual_issame), embeddings1.shape[0])
+    print('nrof_pairs', nrof_pairs)
+
     nrof_thresholds = len(thresholds)
     k_fold = LFold(n_splits=nrof_folds, shuffle=False)
 
@@ -159,21 +191,22 @@ def calculate_val(thresholds,
     dist = np.sum(np.square(diff), 1)
     indices = np.arange(nrof_pairs)
 
-    for fold_idx, (train_set, test_set) in enumerate(k_fold.split(indices)):
+    # for fold_idx, (train_set, test_set) in enumerate(k_fold.split(indices)):
+    #
+    #     # Find the threshold that gives FAR = far_target
+    far_train = np.zeros(nrof_thresholds)
+    for threshold_idx, threshold in enumerate(thresholds):
+        _, far_train[threshold_idx] = calculate_val_far(
+            threshold, dist, actual_issame)
+    if np.max(far_train) >= far_target:
+        f = interpolate.interp1d(far_train, thresholds, kind='slinear')
+        threshold = f(far_target)
+    else:
+        threshold = 0.0
 
-        # Find the threshold that gives FAR = far_target
-        far_train = np.zeros(nrof_thresholds)
-        for threshold_idx, threshold in enumerate(thresholds):
-            _, far_train[threshold_idx] = calculate_val_far(
-                threshold, dist[train_set], actual_issame[train_set])
-        if np.max(far_train) >= far_target:
-            f = interpolate.interp1d(far_train, thresholds, kind='slinear')
-            threshold = f(far_target)
-        else:
-            threshold = 0.0
-
-        val[fold_idx], far[fold_idx] = calculate_val_far(
-            threshold, dist[test_set], actual_issame[test_set])
+    fold_idx = 0
+    val[fold_idx], far[fold_idx] = calculate_val_far(
+        threshold, dist, actual_issame)
 
     val_mean = np.mean(val)
     far_mean = np.mean(far)
@@ -188,6 +221,7 @@ def calculate_val_far(threshold, dist, actual_issame):
         np.logical_and(predict_issame, np.logical_not(actual_issame)))
     n_same = np.sum(actual_issame)
     n_diff = np.sum(np.logical_not(actual_issame))
+    # print(n_diff, n_same, 'diff same')
     # print(true_accept, false_accept)
     # print(n_same, n_diff)
     val = float(true_accept) / float(n_same)
@@ -218,7 +252,7 @@ def evaluate(embeddings, actual_issame, nrof_folds=10, pca=0):
 
 
 @torch.no_grad()
-def test(data_set, backbone, batch_size, nfolds=10):
+def test(data_set, backbone, batch_size, nfolds=1):
     print('testing verification..')
     data_list = data_set[0]
     issame_list = data_set[1]
@@ -234,6 +268,7 @@ def test(data_set, backbone, batch_size, nfolds=10):
             _data = data[bb - batch_size: bb]
             time0 = datetime.datetime.now()
             img = ((_data / 255) - 0.5) / 0.5
+            img = torch.tensor(img, device='cuda')
             net_out: torch.Tensor = backbone(img)
             _embeddings = net_out.detach().cpu().numpy()
             time_now = datetime.datetime.now()
@@ -261,8 +296,109 @@ def test(data_set, backbone, batch_size, nfolds=10):
     std1 = 0.0
     embeddings = embeddings_list[0] + embeddings_list[1]
     embeddings = sklearn.preprocessing.normalize(embeddings)
+
+
     print(embeddings.shape)
+    print(len(issame_list))
+    print(issame_list)
     print('infer time', time_consumed)
     _, _, accuracy, val, val_std, far = evaluate(embeddings, issame_list, nrof_folds=nfolds)
     acc2, std2 = np.mean(accuracy), np.std(accuracy)
+    print(acc2)
     return acc1, std1, acc2, std2, _xnorm, embeddings_list
+
+@torch.no_grad()
+def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=10, nfolds=1, data_size=40000):
+    print('testing verification..')
+    # data_list = data_set[0]
+    # issame_list = data_set[1]
+    embeddings_list = []
+    time_consumed = 0.0
+
+    s = time()
+    for idx, img in enumerate(dataloader):
+        img = img.cuda()
+        net_out: torch.Tensor = backbone(img)
+        _embeddings = net_out.detach().cpu().numpy()
+        embeddings_list.append(_embeddings)
+
+        if idx % 10 == 0:
+            with open('run.log', 'a') as f:
+                temp = time()
+                rate = 10*batch_size / (temp-s)
+                s = temp
+                f.write(f'rate {rate} @ {idx}/{len(dataloader)}')
+                print(f'rate {rate} @ {idx}/{len(dataloader)}')
+
+    full_list = np.vstack(embeddings_list)
+    print(full_list.shape)
+    full_pairs = dataloader.dataset.pairs
+    full_pairs = list(map(bool,full_pairs))
+    assert full_list.shape[0] == data_size * len(test_sets)
+    curr_set = None
+    results = []
+    # acc,std,norm x num_sets x tests
+    for i in range(len(test_sets)):
+        if curr_set == None or i % num_sets == 0:
+            curr_set = test_sets[i]
+
+        assert os.path.dirname(curr_set) == os.path.dirname(test_sets[i])
+        embedding_list = full_list[data_size*i:data_size*(i+1),:]
+        issame_list = full_pairs[data_size*i:data_size*(i+1)]
+        print(embedding_list.shape)
+
+        _xnorm = 0.0
+        _xnorm_cnt = 0
+        for embed in embeddings_list:
+            for j in range(embed.shape[0]):
+                _em = embed[j]
+                _norm = np.linalg.norm(_em)
+                _xnorm += _norm
+                _xnorm_cnt += 1
+        _xnorm /= _xnorm_cnt
+
+        # embeddings = embeddings_list[0].copy()
+        embeddings = embedding_list
+        print(embeddings.shape)
+        embeddings = sklearn.preprocessing.normalize(embeddings)
+        # embeddings = embeddings_list[0] + embeddings_list[1]
+        # embeddings = sklearn.preprocessing.normalize(embeddings)
+
+        print(embeddings.shape)
+        _, _, accuracy, val, val_std, far = evaluate(embeddings, issame_list, nrof_folds=nfolds)
+        acc2, std2 = np.mean(accuracy), np.std(accuracy)
+
+        print(test_sets[i], 'acc', acc2, 'norm', _xnorm)
+        results.append((test_sets[i], acc2, std2, _xnorm))
+        # return acc1, std1, acc2, std2, _xnorm, embeddings_list
+    os.makedirs('results', exist_ok=True)
+    with open('results/iqa_test_sets.p', 'wb') as f:
+        pickle.dump(results, f)
+
+
+@torch.no_grad()
+def load_bin(path, image_size):
+    try:
+        with open(path, 'rb') as f:
+            bins, issame_list = pickle.load(f)  # py2
+    except UnicodeDecodeError as e:
+        with open(path, 'rb') as f:
+            bins, issame_list = pickle.load(f, encoding='bytes')  # py3
+    data_list = []
+    for flip in [0, 1]:
+        data = torch.empty((len(issame_list) * 2, 3, image_size[0], image_size[1]))
+        data_list.append(data)
+    for idx in range(len(issame_list) * 2):
+        _bin = bins[idx]
+        img = mx.image.imdecode(_bin)
+        if img.shape[1] != image_size[0]:
+            img = mx.image.resize_short(img, image_size[0])
+        img = nd.transpose(img, axes=(2, 0, 1))
+        for flip in [0, 1]:
+            if flip == 1:
+                img = mx.ndarray.flip(data=img, axis=2)
+            data_list[flip][idx][:] = torch.from_numpy(img.asnumpy())
+        if idx % 1000 == 0:
+            print('loading bin', idx)
+    print(data_list[0].shape)
+    return data_list, issame_list
