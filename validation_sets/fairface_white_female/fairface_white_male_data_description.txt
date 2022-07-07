@@ -1,0 +1,3 @@
+The top 33 fairface scores for males were taken and verified against binary scores from Vitor's model
+This set was then filtered so that only the top 33% of FairFace caucasion score images remained
+Each .list file contains 5000 matches and 5000 non matches
