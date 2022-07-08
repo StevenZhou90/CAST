@@ -1,2 +1,7 @@
 __pycache__/
 data/
+.ipynb_checkpoints/
+results/
+dataset_builder/attribute_analysis.ipynb
+run.log
+validation_sets/
