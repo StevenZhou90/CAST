@@ -17,11 +17,21 @@ import mxnet as mx
 from mxnet import ndarray as nd
 
 
-def run_evaluation(args, set_list=None):
+def run_evaluation(args, set_list=None, save_pth='save_pth', 
+                   data_size=20000, num_sets=1):
+    print('init dataloader..')
     dataloader = get_dataloader(args, set_list)
     print(len(dataloader))
-    network = get_model('r18').cuda()
-    multi_test(dataloader, network, args.batch_size, set_list)
+    print('loading model..')
+    network = get_model('r50').cuda()
+    ckpt = torch.load('/home/wrobbins/Data/models/wf4m_r50_af.pt')
+    # ckpt = torch.load('/scratch/wrobbins/models/abcd/wf4m_r50_af/model.pt')
+
+    network.load_state_dict(ckpt)
+    network = torch.nn.DataParallel(network)
+
+    multi_test(dataloader, network, args.batch_size, set_list, 
+               save_name=save_pth, data_size=data_size, num_sets=num_sets)
 
     # data = load_bin('/home/wes/Data/face/data/ms1m/other/lfw.bin', (112,112))
     # test(data, network, 256)
@@ -34,6 +44,7 @@ class MultiValidationSet(torch.utils.data.Dataset):
         self.set_names = set_names
         self.pairs = []
         self.imglist = []
+        wf42_root = '/scratch/wrobbins/data/webface42'
         for name in set_names:
             # list_pth = os.path.join('validation_sets', name+'.list')
             list_pth = name
@@ -48,8 +59,8 @@ class MultiValidationSet(torch.utils.data.Dataset):
                     self.pairs.append(int(line[2]))
 
     def __getitem__(self, idx):
-        # img = Image.open(self.imglist[idx])
-        img = np.ones((112, 112, 3), dtype=np.float32)
+        img = Image.open(self.imglist[idx])
+        # img = np.ones((112, 112, 3), dtype=np.float32)
         img = self.transforms(img)
         return img
 
@@ -79,7 +90,8 @@ def get_dataloader(args, set_list):
              transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
              ])
     if not set_list:
-        set_list = args.net_name
+        raise
+        set_list = args.set_name
     dataset = MultiValidationSet(args.data_root, set_list, transform)
     # dataset = Synthetic()
     dataloader = torch.utils.data.DataLoader(dataset=dataset, batch_size=args.batch_size)
@@ -179,7 +191,6 @@ def calculate_val(thresholds,
     assert (embeddings1.shape[0] == embeddings2.shape[0])
     assert (embeddings1.shape[1] == embeddings2.shape[1])
     nrof_pairs = min(len(actual_issame), embeddings1.shape[0])
-    print('nrof_pairs', nrof_pairs)
 
     nrof_thresholds = len(thresholds)
     k_fold = LFold(n_splits=nrof_folds, shuffle=False)
@@ -308,7 +319,9 @@ def test(data_set, backbone, batch_size, nfolds=1):
     return acc1, std1, acc2, std2, _xnorm, embeddings_list
 
 @torch.no_grad()
-def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=10, nfolds=1, data_size=40000):
+def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1, 
+               data_size=40000, save_name='race_gender'):
+    print('num sets var', num_sets)
     print('testing verification..')
     # data_list = data_set[0]
     # issame_list = data_set[1]
@@ -327,7 +340,7 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=10, nfolds=
                 temp = time()
                 rate = 10*batch_size / (temp-s)
                 s = temp
-                f.write(f'rate {rate} @ {idx}/{len(dataloader)}')
+                f.write(f'rate {rate} @ {idx}/{len(dataloader)}\n')
                 print(f'rate {rate} @ {idx}/{len(dataloader)}')
 
     full_list = np.vstack(embeddings_list)
@@ -340,12 +353,20 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=10, nfolds=
     # acc,std,norm x num_sets x tests
     for i in range(len(test_sets)):
         if curr_set == None or i % num_sets == 0:
+            if i > 0:
+                scores = np.array([x[1] for x in results[num_sets*-1:]])
+                scores_acc = np.array([x[2] for x in results[num_sets*-1:]])
+                avg = np.mean(scores)
+                std = np.std(scores)
+                avg_acc = np.mean(scores_acc)
+                std_acc = np.std(scores_acc)
+                print(f'AVG tar@far {avg}+/- {std}    acc {avg_acc}+/-{std_acc}')
             curr_set = test_sets[i]
 
         assert os.path.dirname(curr_set) == os.path.dirname(test_sets[i])
         embedding_list = full_list[data_size*i:data_size*(i+1),:]
-        issame_list = full_pairs[data_size*i:data_size*(i+1)]
-        print(embedding_list.shape)
+        list_size = int(data_size / 2)
+        issame_list = full_pairs[list_size*i:list_size*(i+1)]
 
         _xnorm = 0.0
         _xnorm_cnt = 0
@@ -359,20 +380,36 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=10, nfolds=
 
         # embeddings = embeddings_list[0].copy()
         embeddings = embedding_list
-        print(embeddings.shape)
         embeddings = sklearn.preprocessing.normalize(embeddings)
         # embeddings = embeddings_list[0] + embeddings_list[1]
         # embeddings = sklearn.preprocessing.normalize(embeddings)
 
-        print(embeddings.shape)
-        _, _, accuracy, val, val_std, far = evaluate(embeddings, issame_list, nrof_folds=nfolds)
+        # print(embeddings.shape)
+        tpr, fpr, accuracy, val, val_std, far = evaluate(embeddings, issame_list, nrof_folds=nfolds)
         acc2, std2 = np.mean(accuracy), np.std(accuracy)
+        # print('tpr', tpr)
+        # print('fpr', fpr)
+        mask = fpr < 1e-3
+        tar = np.max(tpr[mask])
+        # print('acc2', acc2, 'tar@far', tar)
 
-        print(test_sets[i], 'acc', acc2, 'norm', _xnorm)
-        results.append((test_sets[i], acc2, std2, _xnorm))
+        
+        print(test_sets[i].replace('all_sets/', '').replace('.list','').ljust(40, ' '), 'tar@far', tar, 'best acc', acc2)
+        with open('run.log', 'a') as f:
+            f.write(f'{test_sets[i]} acc {tar} norm {_xnorm}\n')
+        results.append((test_sets[i], tar, acc2, std2, _xnorm))
         # return acc1, std1, acc2, std2, _xnorm, embeddings_list
+
+    scores = np.array([x[1] for x in results[num_sets*-1:]])
+    scores_acc = np.array([x[2] for x in results[num_sets*-1:]])
+    avg = np.mean(scores)
+    std = np.std(scores)
+    avg_acc = np.mean(scores_acc)
+    std_acc = np.std(scores_acc)
+    print(f'AVG tar@far {avg}+/- {std}    acc {avg_acc}+/-{std_acc}')
+
     os.makedirs('results', exist_ok=True)
-    with open('results/iqa_test_sets.p', 'wb') as f:
+    with open(os.path.join('results', save_name+'.p'), 'wb') as f:
         pickle.dump(results, f)
 
 
