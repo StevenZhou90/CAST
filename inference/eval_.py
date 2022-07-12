@@ -22,15 +22,19 @@ def run_evaluation(args, set_list=None, save_pth='save_pth',
                    data_size=20000, num_sets=1):
     print('init dataloader..')
     dataloader = get_dataloader(args, set_list)
-    print(len(dataloader))
+    print('dataloader batches', len(dataloader))
     print('loading model..')
-    network = get_model('r50').cuda()
-    ckpt = torch.load('/home/wrobbins/Data/models/wf4m_r50_af.pt')
+    network = get_model('r100').cuda()
+    model_name = 'msv3_r100_af.pt'
+    # ckpt = torch.load('/home/wrobbins/Data/models/wf4m_r100_af.pt')
+    # ckpt = torch.load('/home/wrobbins/Data/models/glint_r100_cos.pt')
+    ckpt = torch.load('/home/wrobbins/Data/models/'+model_name)
     # ckpt = torch.load('/scratch/wrobbins/models/abcd/wf4m_r50_af/model.pt')
 
     network.load_state_dict(ckpt)
     network = torch.nn.DataParallel(network)
 
+    print('MODEL:', model_name)
     multi_test(dataloader, network, args.batch_size, set_list,
                save_name=save_pth, data_size=data_size, num_sets=num_sets)
 
@@ -361,6 +365,7 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1
     full_list = np.vstack(embeddings_list)
     print(full_list.shape)
     full_pairs = dataloader.dataset.pairs
+    datasize=2000
     evaluate_all_sets(full_list, full_pairs, test_sets, num_sets, nfolds, datasize, save_name)
 
 
@@ -370,19 +375,23 @@ def evaluate_all_sets(full_list, full_pairs, test_sets, num_sets=1, nfolds=1, da
     assert full_list.shape[0] == data_size * len(test_sets)
     curr_set = None
     results = []
+    avg_results = {}
     # acc,std,norm x num_sets x tests
     for i in range(len(test_sets)):
         if curr_set == None or i % num_sets == 0:
             if i > 0:
                 scores = np.array([x[1] for x in results[num_sets*-1:]])
                 scores_acc = np.array([x[2] for x in results[num_sets*-1:]])
-                avg = np.mean(scores)
-                std = np.std(scores)
-                avg_acc = np.mean(scores_acc)
-                std_acc = np.std(scores_acc)
-                name = test_sets[i-1].replace('validation_sets/', '').replace('.list','')[:-2]
+                avg = np.mean(scores)*100
+                std = np.std(scores)*100
+                avg_acc = np.mean(scores_acc)*100
+                std_acc = np.std(scores_acc)*100
+                name = test_sets[i-1].replace('CC11/', '').replace('.list','')[:-2]
+                name2 = name
                 name = os.path.basename(name).ljust(30, ' ')
-                print(f'{name} AVG tar@far {avg:5f}+/-{std:.5f} acc {avg_acc:5f}+/-{std_acc:.5f}')
+                # print(f'{name} AVG tar@far {avg:3f}+/-{std:.3f} acc {avg_acc:3f}+/-{std_acc:.3f}')
+                print(f'{name} AVG acc {avg_acc:3f}+/-{std_acc:.3f}')
+                avg_results[name2] = (avg_acc, std_acc)
             curr_set = test_sets[i]
 
         assert os.path.dirname(curr_set) == os.path.dirname(test_sets[i])
@@ -424,13 +433,38 @@ def evaluate_all_sets(full_list, full_pairs, test_sets, num_sets=1, nfolds=1, da
 
     scores = np.array([x[1] for x in results[num_sets*-1:]])
     scores_acc = np.array([x[2] for x in results[num_sets*-1:]])
-    avg = np.mean(scores)
-    std = np.std(scores)
-    avg_acc = np.mean(scores_acc)
-    std_acc = np.std(scores_acc)
+    avg = np.mean(scores)*100
+    std = np.std(scores)*100
+    avg_acc = np.mean(scores_acc)*100
+    std_acc = np.std(scores_acc)*100
     name = test_sets[-1].replace('validation_sets/', '').replace('.list','')[:-2]
-    name = os.path.basename(name).ljust(30, ' ')
-    print(f'{name} AVG tar@far {avg:5f}+/-{std:.5f}  acc {avg_acc:5f}+/-{std_acc:.5f}')
+    name2 = test_sets[i-1].replace('CC11/', '').replace('.list','')[:-2]
+    avg_results[name2] = (avg_acc, std_acc)
+    name = os.path.basename(name).ljust(25, ' ')
+    # print(f'{name} AVG tar@far {avg:3f}+/-{std:.3f}  acc {avg_acc:3f}+/-{std_acc:.3f}')
+    print(f'{name} AVG acc {avg_acc:3f}+/-{std_acc:.3f}')
+
+
+
+    overall_acc = np.array([x[2] for x in results])
+    avg_overall = np.mean(overall_acc)*100
+    std_overall = np.std(overall_acc)*100
+    print(f'overall AVG acc {avg_overall:3f}+/-{std_overall:.3f}')
+
+    order = ['black', 'caucasian', 'east_asian', 'latinx', 'middle_eastern',
+             'young', 'female', 'male', 'glasses_facial_hair', 'low_p2p', 'random']
+    # order = ['young', 'male']
+
+    print(avg_results.keys())
+    print('& ', end='')
+    for idx, name in enumerate(order):
+        acc2, std2 = avg_results[name]
+        print(f'{acc2:.2f}\pmf{{{std2:.2f}}} &', end=' ')
+        if idx == 5:
+            print('\\\\')
+            print('& ', end='')
+    print(f'{avg_overall:.2f}\pmf{{{std_overall:.2f}}} \\\\')
+
 
     os.makedirs('results', exist_ok=True)
     with open(os.path.join('results', save_name+'.p'), 'wb') as f:

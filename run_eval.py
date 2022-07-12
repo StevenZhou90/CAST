@@ -1,4 +1,4 @@
-from eval.eval import run_evaluation
+from inference.eval_ import run_evaluation
 import argparse
 import glob
 from sys import exit
@@ -30,6 +30,8 @@ if __name__ == "__main__":
     # sets = list(sets) + list(glob.glob('all_sets/iqa_sets/magface*/2.list'))
 
     sets = glob.glob('CC11/*/*.list')
+    # sets = sets[:20]
+
 
 
     sets = list(sets)
