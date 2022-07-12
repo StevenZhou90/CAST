@@ -5,7 +5,6 @@ from sys import exit
 import os
 
 if __name__ == "__main__":
-
     # parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_root', default='~/Data', type=str)

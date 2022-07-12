@@ -15,9 +15,10 @@ from time import time
 from sys import exit
 import mxnet as mx
 from mxnet import ndarray as nd
+import math
 
 
-def run_evaluation(args, set_list=None, save_pth='save_pth', 
+def run_evaluation(args, set_list=None, save_pth='save_pth',
                    data_size=20000, num_sets=1):
     print('init dataloader..')
     dataloader = get_dataloader(args, set_list)
@@ -30,11 +31,9 @@ def run_evaluation(args, set_list=None, save_pth='save_pth',
     network.load_state_dict(ckpt)
     network = torch.nn.DataParallel(network)
 
-    multi_test(dataloader, network, args.batch_size, set_list, 
+    multi_test(dataloader, network, args.batch_size, set_list,
                save_name=save_pth, data_size=data_size, num_sets=num_sets)
 
-    # data = load_bin('/home/wes/Data/face/data/ms1m/other/lfw.bin', (112,112))
-    # test(data, network, 256)
 
 
 """ Class loads multiple validation_sets """
@@ -181,6 +180,15 @@ def calculate_accuracy(threshold, dist, actual_issame):
     acc = float(tp + tn) / dist.size
     return tpr, fpr, acc
 
+def distance_(embeddings0, embeddings1):
+    # Distance based on cosine similarity
+    dot = np.sum(np.multiply(embeddings0, embeddings1), axis=1)
+    norm = np.linalg.norm(embeddings0, axis=1) * np.linalg.norm(embeddings1, axis=1)
+    # shaving
+    similarity = np.clip(dot / norm, -1., 1.)
+    dist = np.arccos(similarity) / math.pi
+    return similarity, dist
+
 
 def calculate_val(thresholds,
                   embeddings1,
@@ -198,9 +206,16 @@ def calculate_val(thresholds,
     val = np.zeros(nrof_folds)
     far = np.zeros(nrof_folds)
 
-    diff = np.subtract(embeddings1, embeddings2)
-    dist = np.sum(np.square(diff), 1)
+    # diff = np.subtract(embeddings1, embeddings2)
+    # dist = np.sum(np.square(diff), 1)
+    # similarity = dist
+    similarity, dist = distance_(embeddings1, embeddings2)
+    # print(np.mean(dist))
+    # print(np.mean(dist2))
+    # print(np.mean(similarity))
+    # exit()
     indices = np.arange(nrof_pairs)
+
 
     # for fold_idx, (train_set, test_set) in enumerate(k_fold.split(indices)):
     #
@@ -209,11 +224,11 @@ def calculate_val(thresholds,
     for threshold_idx, threshold in enumerate(thresholds):
         _, far_train[threshold_idx] = calculate_val_far(
             threshold, dist, actual_issame)
-    if np.max(far_train) >= far_target:
-        f = interpolate.interp1d(far_train, thresholds, kind='slinear')
-        threshold = f(far_target)
-    else:
-        threshold = 0.0
+    # if np.max(far_train) >= far_target:
+    #     f = interpolate.interp1d(far_train, thresholds, kind='slinear')
+    #     threshold = f(far_target)
+    # else:
+    #     threshold = 0.0
 
     fold_idx = 0
     val[fold_idx], far[fold_idx] = calculate_val_far(
@@ -222,7 +237,7 @@ def calculate_val(thresholds,
     val_mean = np.mean(val)
     far_mean = np.mean(far)
     val_std = np.std(val)
-    return val_mean, val_std, far_mean
+    return val_mean, val_std, far_mean, similarity
 
 
 def calculate_val_far(threshold, dist, actual_issame):
@@ -252,13 +267,13 @@ def evaluate(embeddings, actual_issame, nrof_folds=10, pca=0):
                                        nrof_folds=nrof_folds,
                                        pca=pca)
     thresholds = np.arange(0, 4, 0.001)
-    val, val_std, far = calculate_val(thresholds,
+    val, val_std, far, dist = calculate_val(thresholds,
                                       embeddings1,
                                       embeddings2,
                                       np.asarray(actual_issame),
                                       1e-3,
                                       nrof_folds=nrof_folds)
-    return tpr, fpr, accuracy, val, val_std, far
+    return tpr, fpr, accuracy, val, val_std, far, dist
 
 
 
@@ -319,7 +334,7 @@ def test(data_set, backbone, batch_size, nfolds=1):
     return acc1, std1, acc2, std2, _xnorm, embeddings_list
 
 @torch.no_grad()
-def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1, 
+def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1,
                data_size=40000, save_name='race_gender'):
     print('num sets var', num_sets)
     print('testing verification..')
@@ -346,7 +361,12 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1
     full_list = np.vstack(embeddings_list)
     print(full_list.shape)
     full_pairs = dataloader.dataset.pairs
+    evaluate_all_sets(full_list, full_pairs, test_sets, num_sets, nfolds, datasize, save_name)
+
+
+def evaluate_all_sets(full_list, full_pairs, test_sets, num_sets=1, nfolds=1, data_size=20000, save_name='race_gender'):
     full_pairs = list(map(bool,full_pairs))
+
     assert full_list.shape[0] == data_size * len(test_sets)
     curr_set = None
     results = []
@@ -360,7 +380,9 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1
                 std = np.std(scores)
                 avg_acc = np.mean(scores_acc)
                 std_acc = np.std(scores_acc)
-                print(f'AVG tar@far {avg}+/- {std}    acc {avg_acc}+/-{std_acc}')
+                name = test_sets[i-1].replace('validation_sets/', '').replace('.list','')[:-2]
+                name = os.path.basename(name).ljust(30, ' ')
+                print(f'{name} AVG tar@far {avg:5f}+/-{std:.5f} acc {avg_acc:5f}+/-{std_acc:.5f}')
             curr_set = test_sets[i]
 
         assert os.path.dirname(curr_set) == os.path.dirname(test_sets[i])
@@ -370,12 +392,12 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1
 
         _xnorm = 0.0
         _xnorm_cnt = 0
-        for embed in embeddings_list:
-            for j in range(embed.shape[0]):
-                _em = embed[j]
-                _norm = np.linalg.norm(_em)
-                _xnorm += _norm
-                _xnorm_cnt += 1
+        for j in range(embedding_list.shape[0]):
+            # for j in range(embed.shape[0]):
+            _em = embedding_list[j]
+            _norm = np.linalg.norm(_em)
+            _xnorm += _norm
+            _xnorm_cnt += 1
         _xnorm /= _xnorm_cnt
 
         # embeddings = embeddings_list[0].copy()
@@ -385,7 +407,7 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1
         # embeddings = sklearn.preprocessing.normalize(embeddings)
 
         # print(embeddings.shape)
-        tpr, fpr, accuracy, val, val_std, far = evaluate(embeddings, issame_list, nrof_folds=nfolds)
+        tpr, fpr, accuracy, val, val_std, far, dist = evaluate(embeddings, issame_list, nrof_folds=nfolds)
         acc2, std2 = np.mean(accuracy), np.std(accuracy)
         # print('tpr', tpr)
         # print('fpr', fpr)
@@ -393,8 +415,8 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1
         tar = np.max(tpr[mask])
         # print('acc2', acc2, 'tar@far', tar)
 
-        
-        print(test_sets[i].replace('all_sets/', '').replace('.list','').ljust(40, ' '), 'tar@far', tar, 'best acc', acc2)
+
+        # print(test_sets[i].replace('validation_sets/', '').replace('.list','').ljust(40, ' '), 'tar@far', tar, 'best acc', acc2)
         with open('run.log', 'a') as f:
             f.write(f'{test_sets[i]} acc {tar} norm {_xnorm}\n')
         results.append((test_sets[i], tar, acc2, std2, _xnorm))
@@ -406,11 +428,24 @@ def multi_test(dataloader, backbone, batch_size, test_sets, num_sets=1, nfolds=1
     std = np.std(scores)
     avg_acc = np.mean(scores_acc)
     std_acc = np.std(scores_acc)
-    print(f'AVG tar@far {avg}+/- {std}    acc {avg_acc}+/-{std_acc}')
+    name = test_sets[-1].replace('validation_sets/', '').replace('.list','')[:-2]
+    name = os.path.basename(name).ljust(30, ' ')
+    print(f'{name} AVG tar@far {avg:5f}+/-{std:.5f}  acc {avg_acc:5f}+/-{std_acc:.5f}')
 
     os.makedirs('results', exist_ok=True)
     with open(os.path.join('results', save_name+'.p'), 'wb') as f:
         pickle.dump(results, f)
+    return results
+
+
+def get_distance(embeddings, pairs):
+    pairs = list(map(bool,  pairs))
+    embeddings = sklearn.preprocessing.normalize(embeddings)
+    tpr, fpr, accuracy, val, val_std, far, dist = evaluate(embeddings, pairs, nrof_folds=1)
+    mask = fpr < 1e-3
+    tar = np.max(tpr[mask])
+    print(f'tar@far {tar:.5f} acc {accuracy[0]:.5f}')
+    return dist
 
 
 @torch.no_grad()

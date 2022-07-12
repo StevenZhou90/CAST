@@ -33,11 +33,16 @@ def write_description(dir_name, desc):
 
 def load_bins():
     attributes = None
+    cols = read_columns()
     # print('loading attributes..')
     # s = time()
-    # attributes = np.load('../data/totalAttrList.npy')
+    # attributes = np.load('../data/atts.npy')
     # print(attributes.shape)
     # print(time()-s, 'seconds to load attributes.')
+    # attributes = fairface_softmax(attributes, cols, 'fairface_white', 7)
+    # attributes = fairface_softmax(attributes, cols, 'fairface_male', 2)
+    # attributes = fairface_softmax(attributes, cols, 'fairface_0-2', 9)
+
     paths = np.load('../data/ids.npy')
     assert paths.shape[0] == 41315927
     if os.path.exists('../data/data_index.npy'):
@@ -52,10 +57,25 @@ def load_bins():
         print(time()-s, 'seconds to build index.')
         np.save('../data/data_index', data_index)
         exit()
-    cols = read_columns()
-    print(cols, '\n')
+
+    # print(cols, '\n')
     assert len(cols) == data_index.shape[1], f'columns names are len {len(cols)} and values are len {data_index.shape[1]}'
     return attributes, paths, data_index
+
+def fairface_softmax(data_index, cols, col_name, num):
+    s1 = data_index.shape
+    start = cols.index(col_name)
+    data_index[:,start:start+num] = np.exp(data_index[:,start:start+num]) / np.broadcast_to(np.sum(np.exp(data_index[:,start:start+num]), axis=1), (num,s1[0])).T
+    assert data_index.shape == s1
+    return data_index
+
+def softmax(data_index, cols, col_num, num):
+    s1 = data_index.shape
+    start = col_num
+    data_index[:,start:start+num] = np.exp(data_index[:,start:start+num]) / np.broadcast_to(np.sum(np.exp(data_index[:,start:start+num]), axis=1), (num,s1[0])).T
+    assert data_index.shape == s1
+    return data_index
+
 
 def make_rank(arr):
     attr_list = []
@@ -74,6 +94,19 @@ def write_list_file(pth, pair_list, non_pair_list, paths):
             f.write(paths[matches[0]] + " " + paths[matches[1]] + " 1" + '\n')
         for non in non_pair_list:
             f.write(paths[non[0]] + " " + paths[non[1]] + " 0" + '\n')
+    idxs = []
+    pairs = []
+    for matches in pair_list:
+        idxs.append(matches[0])
+        idxs.append(matches[1])
+        pairs.append(1)
+    for non_matches in non_pair_list:
+        idxs.append(non_matches[0])
+        idxs.append(non_matches[1])
+        pairs.append(0)
+    pth = pth.replace('.list', '')
+    all = np.array(idxs+pairs)
+    np.save(pth, all)
 
 def write_sets(save_path, sets, paths):
     for i in range(len(sets)):
@@ -92,7 +125,7 @@ def read_columns():
 
 """ percentile to webface42 index """
 def p2i(per):
-    return int(41315927*per)
+    return min(int(41315927*per), 41315927-1)
 
 def get_col_idx(col):
     cols = read_columns()
@@ -119,7 +152,7 @@ def get_id_indexes(paths):
     return id_indexes
 
 
-def make_pairs_list(mask, paths, replacement=False, pairs=10000, num_sets=10):
+def make_pairs_list(mask, paths, replacement=True, pairs=5000, num_sets=10):
     available_indexes = np.where(mask)[0]
     print(available_indexes)
     print(available_indexes.shape)
@@ -128,6 +161,7 @@ def make_pairs_list(mask, paths, replacement=False, pairs=10000, num_sets=10):
     id_list = []
     curr_id = 0
     print('making ids x imgs..')
+
     for i in tqdm(range(0, available_indexes.shape[0])):
         # print('avail', available_indexes[i], 'curr id index', id_indexes[curr_id], 'curr id', curr_id)
         if curr_id == id_indexes.shape[0]-1:
@@ -155,18 +189,18 @@ def make_pairs_list(mask, paths, replacement=False, pairs=10000, num_sets=10):
         print('max imgs/id', np.max(np.array([len(x) for x in id_list])))
         print('ids imgs>=2', sum([len(x)>=2 for x in id_list]))
         print('==================================================')
-        if not replacement:
-            # make matching pairs
-            print('making matching pairs..')
-            # bar = tqdm(total=pairs)
-            matches = []
-            while len(matches) < pairs:
-                id = randint(0, len(id_list)-1)
-                if len(id_list[id]) >= 2:
+        # make matching pairs
+        print('making matching pairs..')
+        # bar = tqdm(total=pairs)
+        matches = []
+        while len(matches) < pairs:
+            id = randint(0, len(id_list)-1)
+            if len(id_list[id]) >= 2:
+                img1, img2 = randint(0, len(id_list[id])-1), randint(0, len(id_list[id])-1)
+                while img1 == img2:
                     img1, img2 = randint(0, len(id_list[id])-1), randint(0, len(id_list[id])-1)
-                    while img1 == img2:
-                        img1, img2 = randint(0, len(id_list[id])-1), randint(0, len(id_list[id])-1)
-                    matches.append((id_list[id][img1], id_list[id][img2]))
+                matches.append((id_list[id][img1], id_list[id][img2]))
+                if not replacement:
                     if img2 > img1:
                         del id_list[id][img2]
                         del id_list[id][img1]
@@ -175,21 +209,22 @@ def make_pairs_list(mask, paths, replacement=False, pairs=10000, num_sets=10):
                         del id_list[id][img2]
                     if len(id_list[id]) == 0:
                         del id_list[id]
-                    # bar.update(1)
+                # bar.update(1)
 
-            # make non matches
-            print('making non-matching pairs..')
-            # bar = tqdm(total=pairs)
-            non_matches = []
-            while len(non_matches) < pairs:
+        # make non matches
+        print('making non-matching pairs..')
+        # bar = tqdm(total=pairs)
+        non_matches = []
+        while len(non_matches) < pairs:
+            id1 = randint(0, len(id_list)-1)
+            id2 = randint(0, len(id_list)-1)
+            while id1 == id2:
                 id1 = randint(0, len(id_list)-1)
                 id2 = randint(0, len(id_list)-1)
-                while id1 == id2:
-                    id1 = randint(0, len(id_list)-1)
-                    id2 = randint(0, len(id_list)-1)
-                if len(id_list[id1]) and len(id_list[id2]):
-                    img1, img2 = randint(0, len(id_list[id1])-1), randint(0, len(id_list[id2])-1)
-                    non_matches.append((id_list[id1][img1], id_list[id2][img2]))
+            if len(id_list[id1]) and len(id_list[id2]):
+                img1, img2 = randint(0, len(id_list[id1])-1), randint(0, len(id_list[id2])-1)
+                non_matches.append((id_list[id1][img1], id_list[id2][img2]))
+                if not replacement:
                     del id_list[id1][img1]
                     del id_list[id2][img2]
                     if id1 > id2:
@@ -202,7 +237,7 @@ def make_pairs_list(mask, paths, replacement=False, pairs=10000, num_sets=10):
                             del id_list[id2]
                         if len(id_list[id1]) == 0:
                             del id_list[id1]
-                    # bar.update(1)
+                # bar.update(1)
 
         sets.append((matches, non_matches))
     return sets
@@ -220,7 +255,7 @@ def filter_attribute(mask, col, attributes, data_index):
 
 
 # pass list of tuples
-def make_subset(attr_tuples, attributes, data_index, paths, save_path=False):
+def make_subset(attr_tuples, attributes, data_index, paths, save_path=False, pairs=5000, num_sets=10):
     if not save_path:
         save_path = get_save_path()
     else:
@@ -233,7 +268,7 @@ def make_subset(attr_tuples, attributes, data_index, paths, save_path=False):
         col, lower_q, upper_q = col
         write_description(save_path, f'attribute: {col} lower_quartile: {lower_q} upper_quartile: {upper_q}')
 
-    sets = make_pairs_list(mask, paths)
+    sets = make_pairs_list(mask, paths, pairs=pairs, num_sets=num_sets)
     write_sets(save_path, sets, paths)
 
 
@@ -241,11 +276,61 @@ def make_subset(attr_tuples, attributes, data_index, paths, save_path=False):
 if __name__ == '__main__':
     attributes, paths, data_index = load_bins()
     assert data_index.shape[0] == 41315927
-    qual_columns = ['nima','brisque','pzq2piq','sdd-fiqa','cr-fiqa']
-    for col in qual_columns:
-        for i in range(10):
-            lower_q = i/10
-            upper_q = (i+1)/10
-            tup = [(col, lower_q, upper_q)]
-            save_path = os.path.join('..', 'validation_sets', col+str(lower_q)+'-'+str(upper_q))
-            make_subset(tup, attributes, data_index, paths, save_path=save_path)
+
+    # """ make iqa """
+    # qual_columns = ['nima','brisque','paq2piq','sdd-fiqa','cr-fiqa', 'magface']
+    # for col in qual_columns:
+    #     for i in range(10):
+    #         lower_q = i/10
+    #         upper_q = (i+1)/10
+    #         tup = [(col, lower_q, upper_q)]
+    #         save_path = os.path.join('..', 'validation_sets', 'iqa_sets', col+str(lower_q)+'-'+str(upper_q))
+    #         make_subset(tup, attributes, data_index, paths, save_path=save_path, pairs=5000, num_sets=10)
+
+
+    """ make race x gender """
+    races = ['fairface_white','fairface_black','fairface_latino_hispanic','fairface_east_asian',
+        'fairface_southeast_asian','fairface_indian','fairface_middle_eastern',]
+    sexes = ['fairface_male','fairface_female']
+
+    # for race in races:
+    #     for sex in sexes:
+    #         tup1 = (race, .95, 1.)
+    #         tup2 = (sex, 2/3, 1.)
+    #         # tup3 = ('sdd-fiqa', 0., 0.5)
+    #         tup = [tup1, tup2]#tup3]
+    #         dir_name = race.replace('fairface_', '') + '_' + sex.replace('fairface_', '')
+    #         print('starting', dir_name)
+    #         save_path = os.path.join('..', 'validation_sets', 'race_gender', dir_name)
+    #         make_subset(tup, attributes, data_index, paths, save_path=save_path, pairs=5000, num_sets=10)
+
+    """ gender only """
+    for sex in sexes:
+        tup2 = (sex, 2/3, 1.)
+        tup = [tup2]#tup3]
+        dir_name = sex.replace('fairface_', '')
+        print('starting', dir_name)
+        save_path = os.path.join('..', 'validation_sets', 'gender', dir_name)
+        make_subset(tup, attributes, data_index, paths, save_path=save_path, pairs=5000, num_sets=10)
+
+    # """ make bearded vs no bearder """
+    # atts = [('mustache', ('Mustache', .9, 1.)), ('no_mustache', ('Mustache', 0., .1))]
+    # for dir_name, tup in atts:
+    #     tup = [tup]
+    #     print('starting', dir_name)
+    #     save_path = os.path.join('..', 'validation_sets', 'mustache', dir_name)
+    #     make_subset(tup, attributes, data_index, paths, save_path=save_path, pairs=5000, num_sets=10)
+    #
+    # """ glasses vs no glasses """
+    # atts = [('glasses', ('Eyeglasses', .9, 1.)), ('no glasses', ('Eyeglasses', 0., .1))]
+    # for dir_name, tup in atts:
+    #     tup = [tup]
+    #     print('starting', dir_name)
+    #     save_path = os.path.join('..', 'validation_sets', 'glasses', dir_name)
+    #     make_subset(tup, attributes, data_index, paths, save_path=save_path, pairs=5000, num_sets=10)
+    #
+    # """ magface vs sdd disagreement """
+    # tup = [('magface',.9,1.), ('sdd-fiqa', 0, .1) ]
+    # print('starting', 'mf-sdd')
+    # save_path = os.path.join('..', 'validation_sets','mf-sdd')
+    # make_subset(tup, attributes, data_index, paths, save_path=save_path, pairs=5000, num_sets=10)
