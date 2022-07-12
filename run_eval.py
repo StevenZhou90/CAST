@@ -29,9 +29,13 @@ if __name__ == "__main__":
     # sets = glob.glob('all_sets/iqa_test_sets/*/1.list')
     # sets = glob.glob('all_sets/iqa_sets/magface*/1.list')
     # sets = list(sets) + list(glob.glob('all_sets/iqa_sets/magface*/2.list'))
+
+    sets = glob.glob('CC11/*/*.list')
+
+
     sets = list(sets)
     assert len(sets) > 0, f'sets list empty'
     sets.sort(key=lambda x: os.path.basename(os.path.dirname(x)), reverse=False)
     print('number of sets', len(sets))
     # assert len(sets) == 500
-    run_evaluation(args, sets, save_pth='facial_hair', data_size=20000, num_sets=1)
+    run_evaluation(args, sets, save_pth='facial_hair', data_size=2000, num_sets=10)
