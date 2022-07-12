@@ -1,0 +1,1 @@
+attribute: fairface_female lower_quartile: 0.06666666666666667 upper_quartile: 1

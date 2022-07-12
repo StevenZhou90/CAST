@@ -1,0 +1,1 @@
+attribute: fairface_east_asian lower_quartile: 0.9 upper_quartile: 1

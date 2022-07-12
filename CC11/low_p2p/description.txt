@@ -1,0 +1,1 @@
+attribute: paq2piq lower_quartile: 0.0 upper_quartile: 0.2
