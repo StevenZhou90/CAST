@@ -1,14 +1,16 @@
 import numpy as np
 import csv
+import os
 
 '''need function to log inputs and function to translate atr to index'''
 class FilterClass():
-    def __init__(self, attr_paths, path_paths, columns):
+    def __init__(self, attr_paths, path_paths, columns, train_set=None):
         self.attrArr = np.load(attr_paths)
         self.current_mask = np.ones(self.attrArr.shape[0], dtype=bool)
         self.paths = np.load(path_paths)
         self.columns = columns
         self.columns_list = self.csv_to_list()
+        self.filter_train_set(train_set)
 
     def csv_to_list(self):
         column_list = []
@@ -44,12 +46,12 @@ class FilterClass():
     '''Need to change atr into index, for now just ask for index'''
     '''style is if the sort is by attribute value or by percentile rank'''
     '''if by percentile rank give percentile as 0-100'''
-    def make_range_mask(self, attribute_name, style, lower_range, upper_range): 
+    def make_range_mask(self, attribute_name, style, lower_range, upper_range):
         idx = self.attr_name_to_idx(attribute_name)
         ranked_list = self.make_rank(self.attrArr, idx)
 
-        if(style=='abs'): 
-            lower_mask = self.attrArr[:,idx] > lower_range  
+        if(style=='abs'):
+            lower_mask = self.attrArr[:,idx] > lower_range
             upper_mask = self.attrArr[:,idx] < upper_range
             mask = lower_mask*upper_mask
 
@@ -59,7 +61,7 @@ class FilterClass():
             rank_section = ranked_list[lower_bound_rank_idx:upper_bound_rank_idx]
             mask = np.array(self.attrArr.shape[0], dtype=bool)
             mask = mask[rank_section]
-        
+
         return mask
 
     '''Function to create mask that filters by specified trait in specified column'''
@@ -80,3 +82,17 @@ class FilterClass():
 
     def make_new_paths(self):
         return self.paths[self.current_mask]
+
+    '''Filter out training samples'''
+    def filter_train_set(train_set):
+        if not train_set:
+            return
+        if train_set == 'WebFace12M':
+            mask = np.load('./data/webface12m_idxs.npy')
+        elif os.path.exists(self.train_set):
+            ...
+        else:
+            assert False, f'file does not exist {self.train_set}'
+
+        mask = ~mask
+        self.current_mask = self.current_mask * mask
