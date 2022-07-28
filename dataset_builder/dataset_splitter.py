@@ -1,10 +1,11 @@
 import numpy as np
 import csv
 
-class filter_class():
+'''need function to log inputs and function to translate atr to index'''
+class FilterClass():
     def __init__(self, attr_paths, path_paths, columns):
         self.attrArr = np.load(attr_paths)
-        self.current_mask = np.ones(1000, dtype=bool)
+        self.current_mask = np.ones(self.attrArr.shape[0], dtype=bool)
         self.paths = np.load(path_paths)
         self.columns = columns
         self.columns_list = self.csv_to_list()
@@ -55,17 +56,10 @@ class filter_class():
         if(style=='rank'):
             upper_bound_rank_idx = round((self.attrArr.shape[0]*upper_range/100))-1
             lower_bound_rank_idx = round((self.attrArr.shape[0]*lower_range/100))
-
-            upper_bound_idx = ranked_list[upper_bound_rank_idx]
-            lower_bound_idx = ranked_list[lower_bound_rank_idx]
-
-            upper_bound = self.attrArr[upper_bound_idx, idx]
-            lower_bound = self.attrArr[lower_bound_idx, idx]
-            
-            lower_mask = self.attrArr[:,idx] > lower_bound  
-            upper_mask = self.attrArr[:,idx] < upper_bound
-            mask = lower_mask*upper_mask
-
+            rank_section = ranked_list[lower_bound_rank_idx:upper_bound_rank_idx]
+            mask = np.array(self.attrArr.shape[0], dtype=bool)
+            mask = mask[rank_section]
+        
         return mask
 
     '''Function to create mask that filters by specified trait in specified column'''
