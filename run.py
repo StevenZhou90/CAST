@@ -13,10 +13,14 @@ filter_tool = filter_class(attrARR_path, paths_path, columns)
 '''Examples of tuple inputs'''
 tup1 = ('Heavy_Makeup', 'abs', 0, 100)
 tup2 = ('vitor_gender', 0)
+tup_list = [tup1, tup2]
 
 '''example on how tuples will be added'''
-mask = filter_tool.add_mask(tup1)
-mask = filter_tool.add_mask(tup2)
+for tup in tup_list:
+  filter_tool.add_mask(tup)
+  
 new_paths = filter_tool.make_new_paths()
 
-subset_tool = subset_class(new_paths, 20, 100, 100, False)
+subset_tool = SubsetClass(new_paths, 3, 3, 3, 'test_file_name', False)
+
+subset_tool.write_val_sets()
