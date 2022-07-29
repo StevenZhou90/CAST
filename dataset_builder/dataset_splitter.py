@@ -2,7 +2,6 @@ import numpy as np
 import csv
 import os
 
-'''need function to log inputs and function to translate atr to index'''
 class FilterClass():
     def __init__(self, attr_paths, path_paths, columns, train_set=None):
         self.attrArr = np.load(attr_paths)
