@@ -1,5 +1,7 @@
 import numpy as np
 import os
+from numpy.random import default_rng
+'''need to make draw by replacement option'''
 
 class SubsetClass():
     def __init__(self, filtered_paths, num_of_val_sets, num_of_matches, num_of_non_matches, file_name, replacement_bool):
@@ -14,7 +16,9 @@ class SubsetClass():
         self.replacement_bool = replacement_bool
         self.total_matches = self.num_of_val_sets * self.num_of_matches
         self.total_non_matches = self.num_of_val_sets * self.num_of_non_matches
+        self.file_name = file_name
     
+    '''Create list with where ids change index'''
     def make_id_array(self):
         id_change = [0]
         prev = self.paths[0]
@@ -27,6 +31,13 @@ class SubsetClass():
                 prev = self.paths[i]
         return id_change
     
+    # def rand_select(self, max_num, pull_list):
+    #     item_count = 0
+    #     return_list = []
+    #     while item_count < max_num and len(pull_list):
+    #         rand_select = np.random.choice(self.pull_list)
+
+    '''Make two lists one with matches and one with non matches to later pull validation sets from'''
     def draw_matches(self):
         unused_ids = self.ids
         match_count = 0
@@ -46,6 +57,7 @@ class SubsetClass():
                 rand_select+=2
 
                 match_count+=1
+                print(match_count)
             self.ids = np.delete(self.ids, np.where(rand_select==self.ids))
         
         while non_match_count < self.total_non_matches and len(self.paths):
@@ -55,18 +67,31 @@ class SubsetClass():
                 self.paths = np.delete(self.paths, np.where(self.paths==rand_select[0]))
                 self.paths = np.delete(self.paths, np.where(self.paths==rand_select[1]))
                 non_match_count+=1
+                print(non_match_count)
 
-        return pair_list, non_pair_list        
+        return np.array(pair_list), np.array(non_pair_list)    
 
-    def write_to_file(self, paths):
-        pair_list, non_pair_list = self.draw_matches()
+    '''write paths to .list file'''
+    def write_to_file(self, pair_list, non_pair_list, set_num):
         '''change to allow for file name parameter'''
-        with open('file_name'+'.list', 'w') as f:
+        with open(self.file_name + str(set_num) +'.list', 'w') as f:
             for matches in pair_list:
                 f.write(matches[0] + " " + matches[1] + " 1" + '\n')
             for non in non_pair_list:
                 f.write(non[0] + " " + non[1] + " 0" + '\n')
 
-    '''more efficient to make large list to full from or make continous small lists'''
+    '''Call to write validation sets'''
     def write_val_sets(self):
-        for i in range(0, num_of_val_sets):
+        pair_list, non_pair_list = self.draw_matches()
+        
+        for i in range(0, self.num_of_val_sets):
+            temp_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
+            temp_pair_list = pair_list[temp_pair_list_idx]
+
+            temp_non_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
+            temp_non_pair_list = non_pair_list[temp_non_pair_list_idx]
+            
+            self.write_to_file(temp_pair_list, temp_non_pair_list, i)
+            
+            pair_list = np.delete(pair_list, temp_pair_list_idx)
+            non_pair_list = np.delete(non_pair_list, temp_non_pair_list_idx)
