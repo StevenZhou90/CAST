@@ -15,7 +15,7 @@ Automatic evaluation is provided for Face Recognition.
 ### Run CC11 Face Recogntion Benchmark
 The CAST-Challenging-11 (CC11) benchmark contains 11 sub-benchmarks which contain only hard verification pairs. The full test set contains 110,000 pairs (10k per sub-benchmark) and the validation set contains 11,000 pairs (1k per sub-benchmark). Use instructions below to run the benchmark.
 
-Download CC11 from [here]()(~1GB) and unzip in the `data` directory. Alternatively, if WebFace 42M is downloaded on your system you can pass the directory path to the script:
+Download CC11 from [here](https://drive.google.com/file/d/1cUIcFnBwVWZq44fPpofOJXUqD37ue7c9/view?usp=sharing)(~1GB) and unzip in the `data` directory. Alternatively, if WebFace42M is downloaded on your system you can pass the directory path to the script:
 ```
 # cc11 test set
 python cc11.py --weights weights_path --arch architecture
@@ -27,7 +27,7 @@ python cc11.py --weights weights_path --arch architecture --path webface42m_root
 ```
 <img align="right" src="assets/ex_results.png" style="margin:0px 20px 0px 20px" width="200"/>
 
-The following architecture keys are implemented in the `model` directory: `r18`, `r34`, `r50`, `r100`, `r200`, `mbf`, `mbf_large`, `vit_t`, `vit_s`, `vit_b`. To use a different backbone architecture, import the implementation to the model directory.
+The following architecture keys are implemented in the `model` directory: r18, r34, r50, r100, r200, mbf, mbf_large, vit_t, vit_s, vit_b. To use a different architecture, import the implementation to the model directory.
 
 The screenshot on the right shows example output from a ResNet50 trained on WebFace4M.
 

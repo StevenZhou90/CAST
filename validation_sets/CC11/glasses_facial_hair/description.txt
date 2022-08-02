@@ -1,0 +1,2 @@
+attribute: Eyeglasses lower_quartile: 0.8 upper_quartile: 1
+attribute: Mustache lower_quartile: 0.8 upper_quartile: 1

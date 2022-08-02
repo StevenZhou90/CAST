@@ -291,14 +291,73 @@ def load_bin(path, image_size=(112, 112)):
         with open(path, 'rb') as f:
             bins, issame_list = pickle.load(f, encoding='bytes')  # py3
     data = torch.empty((len(issame_list) * 2, 3, image_size[0], image_size[1]))
-    for idx in range(len(issame_list) * 2):
+    print('loading images...')
+    for idx in tqdm(range(len(issame_list) * 2)):
         _bin = bins[idx]
         img = mx.image.imdecode(_bin)
         if img.shape[1] != image_size[0]:
             img = mx.image.resize_short(img, image_size[0])
         img = np.transpose(img, axes=(2, 0, 1))
         data[idx][:] = torch.from_numpy(img.asnumpy())
-        if idx % 1000 == 0:
-            print('loading bin', idx)
     print(data.shape)
     return data, issame_list
+
+
+@torch.no_grad()
+def load_from_list(data_root, list_dir, depth=2):
+    assert depth in [1,2]
+    list_files = os.listdir(list_dir)
+    if depth == 2:
+        temp_list_files = []
+        for d in list_files:
+            if os.path.isdir(os.path.join(list_dir, d)):
+                temp_list_files += [os.path.join(list_dir, d, x) for x in os.listdir(os.path.join(list_dir,d))]
+        list_files = temp_list_files
+    list_files = list(filter(lambda x: os.path.basename(x).endswith('.list') and
+                            os.path.basename(x).split('.')[0].isdigit(), list_files))
+    from pprint import pprint
+    pprint(list_files)
+
+@torch.no_grad()
+def load_CC11_list(data_root):
+    list_dir = 'validation_sets/CC11'
+    list_files = sub_dirs = ['black', 'caucasian', 'east_asian', 'latinx',
+                            'middle_eastern', 'young', 'female', 'male',
+                            'glasses_facial_hair', 'low_p2p', 'random']
+    temp_list_files = []
+    for d in list_files:
+        if os.path.isdir(os.path.join(list_dir, d)):
+            temp_list_files += [os.path.join(list_dir, d, x) for x in os.listdir(os.path.join(list_dir,d))]
+    list_files = temp_list_files
+    list_files = list(filter(lambda x: os.path.basename(x).endswith('.list') and
+                            os.path.basename(x).split('.')[0].isdigit(), list_files))
+    from pprint import pprint
+    pprint(list_files)
+    bins = []
+    issame_list = []
+
+    for l_file in list_files:
+        with open(l_file, 'r') as f:
+            lines = f.readlines()
+            for line in lines:
+                issame_list.append(bool(int(line.strip().split(' ')[-1])))
+    data = torch.empty((len(issame_list) * 2, 3, 112, 112))
+    idx = 0
+    for l_file in tqdm(list_files):
+        for line in open(l_file, 'r'):
+            line = line.strip().split()
+            assert len(line) == 3
+            path1 = os.path.join(data_root, line[0])
+            path2 = os.path.join(data_root, line[1])
+            im1 = cv2.imread(path1)
+            im2 = cv2.imread(path2)
+            img1 = np.transpose(img, axes=(2, 0, 1))
+            img2 = np.transpose(img, axes=(2, 0, 1))
+            data[idx][:] = torch.from_numpy(img1.asnumpy())
+            data[idx+1][:] = torch.from_numpy(img2.asnumpy())
+            idx +=2
+
+
+
+    #                 with open(output, 'wb') as f:
+    # pickle.dump((bins, issame_list), f, protocol=4)

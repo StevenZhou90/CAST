@@ -1,2 +1,0 @@
-Images that fell in the middle 33% of FairFace male and female scores and AFFACT male scores were added to these lists
-Each .list file contains 5000 matches and 5000 non matches
