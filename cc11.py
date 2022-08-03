@@ -22,8 +22,8 @@ if args.path.endswith('.bin'):
     print(type(dataset[0]))
 else:
     assert os.path.isdir(args.path), f'{args.path} should be .bin or webface42m root'
-    datset = load_CC11_list(args.path)
-    exit()
+    dataset = load_CC11_list(args.path)
+    # exit()
 
 
 # load model
