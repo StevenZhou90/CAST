@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import sklearn
 import torch
+import cv2
 from torchvision import transforms
 from PIL import Image
 from scipy import interpolate
@@ -331,8 +332,8 @@ def load_CC11_list(data_root):
     list_files = temp_list_files
     list_files = list(filter(lambda x: os.path.basename(x).endswith('.list') and
                             os.path.basename(x).split('.')[0].isdigit(), list_files))
-    from pprint import pprint
-    pprint(list_files)
+    # from pprint import pprint
+    # pprint(list_files)
     bins = []
     issame_list = []
 
@@ -349,13 +350,17 @@ def load_CC11_list(data_root):
             assert len(line) == 3
             path1 = os.path.join(data_root, line[0])
             path2 = os.path.join(data_root, line[1])
-            im1 = cv2.imread(path1)
-            im2 = cv2.imread(path2)
-            img1 = np.transpose(img, axes=(2, 0, 1))
-            img2 = np.transpose(img, axes=(2, 0, 1))
-            data[idx][:] = torch.from_numpy(img1.asnumpy())
-            data[idx+1][:] = torch.from_numpy(img2.asnumpy())
+            img1 = cv2.imread(path1)
+            img2 = cv2.imread(path2)
+            img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB)
+            img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB)
+            img1 = np.transpose(img1, axes=(2, 0, 1))
+            img2 = np.transpose(img2, axes=(2, 0, 1))
+            data[idx][:] = torch.from_numpy(img1)
+            data[idx+1][:] = torch.from_numpy(img2)
             idx +=2
+    return data, issame_list
+
 
 
 
