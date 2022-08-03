@@ -61,9 +61,11 @@ def get_dataloader(args):
 
 
 # results formatting
-def formatted_print(row_name, acc, std):
-    print(f'| {row_name.ljust(11)} | {acc:.2f}+-{std:.2f}|')
-    print(' --------------------------')
+def formatted_print(row_name, acc, std, sep=False):
+    if sep:
+        print(' --------------------------------')
+    print(f'| {row_name.ljust(17)}   {acc:.2f}+-{std:.2f}|')
+    print(' --------------------------------')
 
 class LFold:
     def __init__(self, n_splits=2, shuffle=False):
@@ -239,13 +241,10 @@ def evaluate(embeddings, actual_issame, nrof_folds=10, pca=0):
 
 @torch.no_grad()
 def test(data_set, backbone, batch_size, nfolds=10):
-    # print('testing verification..')
     data_list = data_set[0]
     issame_list = data_set[1]
-    # embeddings_list = []
     time_consumed = 0.0
-    # for i in range(len(data_list)):
-    data = data_list#[i]
+    data = data_list
     embeddings = None
     ba = 0
     while ba < data.shape[0]:
@@ -264,7 +263,6 @@ def test(data_set, backbone, batch_size, nfolds=10):
             embeddings = np.zeros((data.shape[0], _embeddings.shape[1]))
         embeddings[ba:bb, :] = _embeddings[(batch_size - count):, :]
         ba = bb
-    # embeddings_list.append(embeddings)
 
     _xnorm = 0.0
     _xnorm_cnt = 0
@@ -276,14 +274,10 @@ def test(data_set, backbone, batch_size, nfolds=10):
         _xnorm_cnt += 1
     _xnorm /= _xnorm_cnt
 
-    # embeddings = embeddings_list[0].copy()
     embeddings = sklearn.preprocessing.normalize(embeddings)
     acc1 = 0.0
     std1 = 0.0
-    # embeddings = embeddings_list[0] + embeddings_list[1]
     embeddings = sklearn.preprocessing.normalize(embeddings)
-    # print(embeddings.shape)
-    # print('infer time', time_consumed)
     _, _, accuracy, val, val_std, far = evaluate(embeddings, issame_list, nrof_folds=nfolds)
     acc2, std2 = np.mean(accuracy), np.std(accuracy)
     return acc1, std1, acc2, std2, _xnorm
@@ -310,19 +304,11 @@ def load_bin(path, image_size=(112, 112)):
 
 
 @torch.no_grad()
-def load_from_list(data_root, list_dir, depth=2):
-    assert depth in [1,2]
-    list_files = os.listdir(list_dir)
-    if depth == 2:
-        temp_list_files = []
-        for d in list_files:
-            if os.path.isdir(os.path.join(list_dir, d)):
-                temp_list_files += [os.path.join(list_dir, d, x) for x in os.listdir(os.path.join(list_dir,d))]
-        list_files = temp_list_files
+def load_from_list(data_root, list_dir):
+    list_files = [os.path.join(list_dir, x) for x in os.listdir(list_dir)]
     list_files = list(filter(lambda x: os.path.basename(x).endswith('.list') and
                             os.path.basename(x).split('.')[0].isdigit(), list_files))
-    from pprint import pprint
-    pprint(list_files)
+    return read_paths(list_files, data_root)
 
 @torch.no_grad()
 def load_CC11_list(data_root):
@@ -339,9 +325,12 @@ def load_CC11_list(data_root):
                             os.path.basename(x).split('.')[0].isdigit(), list_files))
     # from pprint import pprint
     # pprint(list_files)
+    return read_paths(list_files, data_root)
+
+
+def read_paths(list_files, data_root):
     bins = []
     issame_list = []
-
     for l_file in list_files:
         with open(l_file, 'r') as f:
             lines = f.readlines()

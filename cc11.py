@@ -44,7 +44,6 @@ std_ = []
 dataset, issame_list = dataset
 
 if isinstance(dataset, torch.Tensor):
-    print(' --------------------------')
     sub_benchmark_size = int(dataset.shape[0]/sub_benchmarks)
     for i in range(sub_benchmarks):
         sub_benchmark = dataset[i*sub_benchmark_size: (i+1)*sub_benchmark_size]
@@ -53,7 +52,10 @@ if isinstance(dataset, torch.Tensor):
         acc, std = acc*100, std*100
         acc_.append(acc)
         std_.append(std)
-        formatted_print(names[i], acc, std)
+        if i == 0:
+            formatted_print(names[i], acc, std, sep=True)
+        else:
+            formatted_print(names[i], acc, std)
     # print average over sub-benchmarks
-    print('\n --------------------------')
-    formatted_print('Avg', np.mean(np.array(acc_)), np.mean(np.array(std_)))
+    print()
+    formatted_print('Avg', np.mean(np.array(acc_)), np.mean(np.array(std_)), sep=True)
