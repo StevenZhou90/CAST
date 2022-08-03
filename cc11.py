@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from sys import exit
 
-from evaluation.evaluation import load_bin, test, load_CC11_list
+from evaluation.evaluation import load_bin, test, load_CC11_list, formatted_print
 from models import get_model
 
 parser = argparse.ArgumentParser()
@@ -34,10 +34,7 @@ model.load_state_dict(ckpt)
 
 # results formatting
 names = ['Black', 'Caucasian', 'E. Asian', 'Latinx', 'M.E.', 'Young',
-'Female', 'Male', 'G&FH', 'L-p2p', 'Random']
-def formatted_print(row_name, acc, std):
-    print(f'| {row_name.ljust(11)} | {acc:.2f}+-{std:.2f}|')
-    print(' --------------------------')
+        'Female', 'Male', 'G&FH', 'L-p2p', 'Random']
 
 
 # run eval

@@ -59,6 +59,10 @@ def get_dataloader(args):
     return dataloader
 
 
+# results formatting
+def formatted_print(row_name, acc, std):
+    print(f'| {row_name.ljust(11)} | {acc:.2f}+-{std:.2f}|')
+    print(' --------------------------')
 
 class LFold:
     def __init__(self, n_splits=2, shuffle=False):
@@ -71,6 +75,7 @@ class LFold:
             return self.k_fold.split(indices)
         else:
             return [(indices, indices)]
+
 
 
 def calculate_roc(thresholds,
@@ -343,6 +348,7 @@ def load_CC11_list(data_root):
                 issame_list.append(bool(int(line.strip().split(' ')[-1])))
     data = torch.empty((len(issame_list) * 2, 3, 112, 112))
     idx = 0
+    print('loading images...')
     for l_file in tqdm(list_files):
         for line in open(l_file, 'r'):
             line = line.strip().split()
