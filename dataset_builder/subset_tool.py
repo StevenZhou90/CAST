@@ -2,9 +2,9 @@ import numpy as np
 import os
 from numpy.random import default_rng
 '''need to make draw by replacement option'''
-
+'''need to drop all files into one dir check wes code'''
 class SubsetClass():
-    def __init__(self, filtered_paths, num_of_val_sets, num_of_matches, num_of_non_matches, file_name, replacement_bool):
+    def __init__(self, filtered_paths, num_of_val_sets, num_of_matches, num_of_non_matches, file_name, replacement_bool, inputs):
         self.paths = filtered_paths
         self.tracked_paths = self.paths
         self.ids = self.make_id_array()
@@ -17,7 +17,9 @@ class SubsetClass():
         self.total_matches = self.num_of_val_sets * self.num_of_matches
         self.total_non_matches = self.num_of_val_sets * self.num_of_non_matches
         self.file_name = file_name
-    
+        self.input = inputs
+        self.dir = os.path.join('validation_sets', self.file_name)
+
     '''Create list with where ids change index'''
     def make_id_array(self):
         id_change = [0]
@@ -30,6 +32,14 @@ class SubsetClass():
                 id_change.append(i)
                 prev = self.paths[i]
         return id_change
+
+    def make_dir(self):
+        if not os.path.exists(self.dir):
+            os.mkdir(self.dir)
+        else: 
+            print('Path already exists')
+        with open(dir + '/' + 'description' + '.txt') as f:
+            f.write(self.input)
     
     # def rand_select(self, max_num, pull_list):
     #     item_count = 0
@@ -57,7 +67,6 @@ class SubsetClass():
                 rand_select+=2
 
                 match_count+=1
-                print(match_count)
             self.ids = np.delete(self.ids, np.where(rand_select==self.ids))
         
         while non_match_count < self.total_non_matches and len(self.paths):
@@ -67,14 +76,13 @@ class SubsetClass():
                 self.paths = np.delete(self.paths, np.where(self.paths==rand_select[0]))
                 self.paths = np.delete(self.paths, np.where(self.paths==rand_select[1]))
                 non_match_count+=1
-                print(non_match_count)
 
         return np.array(pair_list), np.array(non_pair_list)    
 
     '''write paths to .list file'''
     def write_to_file(self, pair_list, non_pair_list, set_num):
         '''change to allow for file name parameter'''
-        with open(self.file_name + str(set_num) +'.list', 'w') as f:
+        with open(self.dir + '/' + str(set_num) +'.list', 'w') as f:
             for matches in pair_list:
                 f.write(matches[0] + " " + matches[1] + " 1" + '\n')
             for non in non_pair_list:
@@ -82,8 +90,11 @@ class SubsetClass():
 
     '''Call to write validation sets'''
     def write_val_sets(self):
+        self.make_dir()
         pair_list, non_pair_list = self.draw_matches()
-        
+        print(len(pair_list))
+        print(len(non_pair_list))
+
         for i in range(0, self.num_of_val_sets):
             temp_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
             temp_pair_list = pair_list[temp_pair_list_idx]
@@ -95,3 +106,5 @@ class SubsetClass():
             
             pair_list = np.delete(pair_list, temp_pair_list_idx)
             non_pair_list = np.delete(non_pair_list, temp_non_pair_list_idx)
+            print(len(pair_list))
+            print(len(non_pair_list))
