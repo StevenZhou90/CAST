@@ -18,7 +18,7 @@ class SubsetClass():
         self.total_non_matches = self.num_of_val_sets * self.num_of_non_matches
         self.file_name = file_name
         self.input = inputs
-        self.dir = os.path.join('validation_sets', self.file_name)
+        self.dir = os.path.join('validation_sets/', self.file_name)
 
     '''Create list with where ids change index'''
     def make_id_array(self):
@@ -37,10 +37,10 @@ class SubsetClass():
         if not os.path.exists(self.dir):
             os.mkdir(self.dir)
         else: 
-            print('Path already exists')
-        with open(dir + '/' + 'description' + '.txt') as f:
-            f.write(self.input)
-    
+            print('Path already exists') 
+        with open(self.dir + '/' + 'description' + '.txt', 'w') as f:
+            f.write(str(self.input))
+
     # def rand_select(self, max_num, pull_list):
     #     item_count = 0
     #     return_list = []
@@ -91,9 +91,10 @@ class SubsetClass():
     '''Call to write validation sets'''
     def write_val_sets(self):
         self.make_dir()
+
         pair_list, non_pair_list = self.draw_matches()
-        print(len(pair_list))
-        print(len(non_pair_list))
+        # print(len(pair_list))
+        # print(len(non_pair_list))
 
         for i in range(0, self.num_of_val_sets):
             temp_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
