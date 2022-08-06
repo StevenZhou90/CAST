@@ -35,9 +35,15 @@ The screenshot on the right shows example output from a ResNet50 trained on WebF
 todo
 
 ### Subsample Verification Sets
-instructions todo
+Inside the run.py file. Pass in the desired paths for the attribute array and the paths for each row. Pass in a csv with the column names, otherwise the first row of the attribute array will be taken as the column row.
+
+Create a list of tuples. If the data hold numerical data, create a tuple with a length of four with the first index being the attribute name, then if the data should be split using an absolute attribute value or by percentiles. Then pass in the bottom bound and upper bound for the scale defined before. Create tuples of length 2 for categorical data with the first index being the column name and the second being the class to filter for.
+
+Now, edit the parameters of the SubsetClass declaration. The first parameter takes in the results of the filter tool and thus should not be changed. Now define the parameters for the number of validation sets, the number of matches in a set, the number of non-matches in a set, the name of the validation dataset folder, if the tool needs to filter by replacement, and the tuple list used for the filter tool.
+
+Run the run.py file now and the result should be a folder with the sets and a description of the folder.
 ```
-python subsample.py
+python run.py
 ```
 
 ### Evaluate New Verification Sets
