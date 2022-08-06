@@ -13,7 +13,7 @@ class SubsetClass():
         self.num_of_val_sets = num_of_val_sets
         self.num_of_matches = num_of_matches #per set
         self.num_of_non_matches = num_of_non_matches #per set
-        self.replacement_bool = replacement_bool
+        self.replacement_bool = replacement_bool # Currently only does by replacemnet 
         self.total_matches = self.num_of_val_sets * self.num_of_matches
         self.total_non_matches = self.num_of_val_sets * self.num_of_non_matches
         self.file_name = file_name
@@ -102,10 +102,5 @@ class SubsetClass():
 
             temp_non_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
             temp_non_pair_list = non_pair_list[temp_non_pair_list_idx]
-            
+            print(i)
             self.write_to_file(temp_pair_list, temp_non_pair_list, i)
-            
-            pair_list = np.delete(pair_list, temp_pair_list_idx)
-            non_pair_list = np.delete(non_pair_list, temp_non_pair_list_idx)
-            print(len(pair_list))
-            print(len(non_pair_list))
