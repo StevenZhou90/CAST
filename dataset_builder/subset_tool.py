@@ -8,8 +8,6 @@ class SubsetClass():
         self.paths = filtered_paths
         self.tracked_paths = self.paths
         self.ids = self.make_id_array()
-        #print(self.ids)
-        #print(self.paths)
         self.num_of_val_sets = num_of_val_sets
         self.num_of_matches = num_of_matches #per set
         self.num_of_non_matches = num_of_non_matches #per set
@@ -40,12 +38,6 @@ class SubsetClass():
             print('Path already exists') 
         with open(self.dir + '/' + 'description' + '.txt', 'w') as f:
             f.write(str(self.input))
-
-    # def rand_select(self, max_num, pull_list):
-    #     item_count = 0
-    #     return_list = []
-    #     while item_count < max_num and len(pull_list):
-    #         rand_select = np.random.choice(self.pull_list)
 
     '''Make two lists one with matches and one with non matches to later pull validation sets from'''
     def draw_matches(self):
@@ -93,8 +85,6 @@ class SubsetClass():
         self.make_dir()
 
         pair_list, non_pair_list = self.draw_matches()
-        # print(len(pair_list))
-        # print(len(non_pair_list))
 
         for i in range(0, self.num_of_val_sets):
             temp_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
