@@ -1,5 +1,5 @@
 from dataset_builder.subset_tool import SubsetClass
-from dataset_builder.data_splitter_class import FilterClass 
+from dataset_builder.dataset_splitter import FilterClass 
 import os
 
 '''Add the path to your attribute dataset here: Make sure it is a npy file'''
