@@ -2,7 +2,7 @@ import numpy as np
 import os
 from numpy.random import default_rng
 '''need to make draw by replacement option'''
-'''need to drop all files into one dir check wes code'''
+
 class SubsetClass():
     def __init__(self, filtered_paths, num_of_val_sets, num_of_matches, num_of_non_matches, file_name, replacement_bool, inputs):
         self.paths = filtered_paths
@@ -11,7 +11,7 @@ class SubsetClass():
         self.num_of_val_sets = num_of_val_sets
         self.num_of_matches = num_of_matches #per set
         self.num_of_non_matches = num_of_non_matches #per set
-        self.replacement_bool = replacement_bool # Currently only does by replacemnet 
+        self.replacement_bool = replacement_bool # Currently only does by replacemnet
         self.total_matches = self.num_of_val_sets * self.num_of_matches
         self.total_non_matches = self.num_of_val_sets * self.num_of_non_matches
         self.file_name = file_name
@@ -34,8 +34,8 @@ class SubsetClass():
     def make_dir(self):
         if not os.path.exists(self.dir):
             os.mkdir(self.dir)
-        else: 
-            print('Path already exists') 
+        else:
+            print('Path already exists')
         with open(self.dir + '/' + 'description' + '.txt', 'w') as f:
             f.write(str(self.input))
 
@@ -60,16 +60,20 @@ class SubsetClass():
 
                 match_count+=1
             self.ids = np.delete(self.ids, np.where(rand_select==self.ids))
-        
-        while non_match_count < self.total_non_matches and len(self.paths):
-            rand_select = np.random.choice(self.paths, 2)
-            if(os.path.dirname(rand_select[0])!=os.path.dirname(rand_select[1])):
-                non_pair_list.append(rand_select)
-                self.paths = np.delete(self.paths, np.where(self.paths==rand_select[0]))
-                self.paths = np.delete(self.paths, np.where(self.paths==rand_select[1]))
-                non_match_count+=1
+        print('matches done')
 
-        return np.array(pair_list), np.array(non_pair_list)    
+
+        while non_match_count < self.total_non_matches and len(self.paths):
+            rand_select = np.random.choice(self.paths)
+            rand_select1 = np.random.choice(self.paths)
+
+            if(os.path.dirname(rand_select)!=os.path.dirname(rand_select1)):
+                non_pair_list.append([rand_select, rand_select1])
+                
+                non_match_count+=1
+                print(non_match_count)
+
+        return np.array(pair_list), np.array(non_pair_list)
 
     '''write paths to .list file'''
     def write_to_file(self, pair_list, non_pair_list, set_num):
@@ -92,5 +96,4 @@ class SubsetClass():
 
             temp_non_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
             temp_non_pair_list = non_pair_list[temp_non_pair_list_idx]
-            print(i)
             self.write_to_file(temp_pair_list, temp_non_pair_list, i)
