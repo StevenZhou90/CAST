@@ -4,12 +4,13 @@ import os
 
 '''need function to log inputs'''
 class FilterClass():
-    def __init__(self, attr_paths, path_paths, columns=None):
+    def __init__(self, attr_paths, path_paths, columns=None, train_set = None):
         self.attrArr = np.load(attr_paths)
         self.current_mask = np.ones(self.attrArr.shape[0], dtype=bool)
         self.paths = np.load(path_paths)
         self.columns = columns
         self.columns_list = self.make_columns_list()
+        self.train_set = train_set
 
     def make_columns_list(self):
         if self.columns!=None:
@@ -84,12 +85,6 @@ class FilterClass():
     def make_new_paths(self):
         return self.paths[self.current_mask]
 
-    def run(self, tup_list):
-        for tup in tup_list:
-            self.add_mask(tup)
-        paths = self.make_new_paths()
-        return paths
-
     '''Filter out training samples'''
     def filter_train_set(self, train_set):
         if not train_set:
@@ -103,3 +98,11 @@ class FilterClass():
 
         mask = ~mask
         self.current_mask = self.current_mask * mask
+        
+    def run(self, tup_list):
+        if self.train_set!=None:
+            self.filter_train_set(self.train_set)
+        for tup in tup_list:
+            self.add_mask(tup)
+        paths = self.make_new_paths()
+        return paths
