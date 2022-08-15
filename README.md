@@ -53,11 +53,34 @@ upzip race_gender.zip
 
 
 ### Subsample Verification Sets
-Inside the run.py file. Pass in the desired paths for the attribute array and the paths for each row. Pass in a csv with the column names, otherwise the first row of the attribute array will be taken as the column row.
 
-Create a list of tuples. If the data hold numerical data, create a tuple with a length of four with the first index being the attribute name, then if the data should be split using an absolute attribute value or by percentiles. Then pass in the bottom bound and upper bound for the scale defined before. Create tuples of length 2 for categorical data with the first index being the column name and the second being the class to filter for.
+Found in file CAST/dataset_builder/subset_tool.py
+'''
+'''Add the path to your attribute dataset here: Make sure it is a npy file'''
+attrARR_path = 
 
-Now, edit the parameters of the SubsetClass declaration. The first parameter takes in the results of the filter tool and thus should not be changed. Now define the parameters for the number of validation sets, the number of matches in a set, the number of non-matches in a set, the name of the validation dataset folder, if the tool needs to filter by replacement, and the tuple list used for the filter tool.
+'''Add the path to your list of image paths here: Make sure it is a npy file'''
+paths_path = 
+
+'''Add the path to a csv with all attribute column names'''
+columns = 
+
+'''OPTIONAL: Add indexes of training samples'''
+train_set = 
+
+filter_tool = FilterClass(attrARR_path, paths_path, columns=columns, train_set=train_set)
+
+'''Examples of tuple inputs'''
+attr1 = ('Heavy_Makeup', 'abs', 0, 100)
+attr2 = ('vitor_gender', 0)
+attr_list = [attr1, attr2]
+'''
+
+1. Go to the run.py file. Pass in the desired paths for the attribute array, the paths for each object, and an optional csv with the column names (if no csv exists, do not pass in a columns variable). Pass in a mask for the training indexes if desired
+2. Declare a list of tuples in attr_list. Each tuple will be taken as directions to filter by a certain attribute. The first item in the tuple should be the name of the attribute. 
+   - If the attribute holds categorical data, then the tuple will be of length 2 with the second item being the class to filter for. 
+   - If the attribute holds numerical data, the tuple will be of length 4. The second item will be either 'abs' or 'rank' which determines how the filter      tool will filter by aboslute values or percentile ranks respectivly. The next two items will the lower and upper bounds for the scale defined prior
+3. Now pass in the parameters for the SubsetClass creation
 
 Run the run.py file now and the result should be a folder with the sets and a description of the folder.
 ```
