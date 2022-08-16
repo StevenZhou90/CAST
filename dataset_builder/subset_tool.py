@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from numpy.random import default_rng
-'''need to make draw by replacement option'''
+import random
 
 class SubsetClass():
     def __init__(self, filtered_paths, num_of_val_sets, num_of_matches, num_of_non_matches, file_name, replacement_bool, inputs):
@@ -11,7 +11,7 @@ class SubsetClass():
         self.num_of_val_sets = num_of_val_sets
         self.num_of_matches = num_of_matches #per set
         self.num_of_non_matches = num_of_non_matches #per set
-        self.replacement_bool = replacement_bool # Currently only does by replacemnet
+        self.replacement_bool = replacement_bool # Currently only does by replacemnet 
         self.total_matches = self.num_of_val_sets * self.num_of_matches
         self.total_non_matches = self.num_of_val_sets * self.num_of_non_matches
         self.file_name = file_name
@@ -34,44 +34,31 @@ class SubsetClass():
     def make_dir(self):
         if not os.path.exists(self.dir):
             os.mkdir(self.dir)
-        else:
-            print('Path already exists')
+        else: 
+            print('Path already exists') 
         with open(self.dir + '/' + 'description' + '.txt', 'w') as f:
             f.write(str(self.input))
 
     '''Make two lists one with matches and one with non matches to later pull validation sets from'''
     def draw_matches(self):
-        unused_ids = self.ids
-        match_count = 0
-        non_match_count = 0
         pair_list = []
         non_pair_list = []
+        path_copy = self.paths
 
-        while match_count < self.total_matches and len(unused_ids)!=0:
-            rand_select = np.random.choice(self.ids)
+        while len(pair_list)<self.total_matches and len(path_copy)>1:
+            rand_idx = random.randint(0, len(path_copy))
+            while(rand_idx+1<len(path_copy)-1 and len(pair_list)<self.total_matches and os.path.dirname(path_copy[rand_idx])==os.path.dirname(path_copy[rand_idx+1])):
+                pair_list.append([path_copy[rand_idx], path_copy[rand_idx+1]])
+                path_copy = np.delete(path_copy, rand_idx+1)
+                path_copy = np.delete(path_copy, rand_idx)
+                rand_idx+=2
 
-            if(os.path.dirname(self.paths[rand_select])==os.path.dirname(self.paths[rand_select+1])):
-                pair_list.append([self.paths[rand_select], self.paths[rand_select+1]])
-
-                unused_ids = np.delete(unused_ids, np.where(unused_ids==self.paths[rand_select]))
-                unused_ids = np.delete(unused_ids, np.where(unused_ids==self.paths[rand_select+1]))
-
-                rand_select+=2
-
-                match_count+=1
-            self.ids = np.delete(self.ids, np.where(rand_select==self.ids))
-        print('matches done')
-
-
-        while non_match_count < self.total_non_matches and len(self.paths):
-            rand_select = np.random.choice(self.paths)
-            rand_select1 = np.random.choice(self.paths)
-
-            if(os.path.dirname(rand_select)!=os.path.dirname(rand_select1)):
-                non_pair_list.append([rand_select, rand_select1])
-                
-                non_match_count+=1
-                print(non_match_count)
+        while len(non_pair_list)<self.total_non_matches and len(self.paths)>1:
+            rand_idx = np.random.randint(len(self.paths), size=2)
+            if(max(rand_idx)<len(self.paths) and self.paths[rand_idx[0]]!=self.paths[rand_idx[1]]):
+                non_pair_list.append(self.paths[rand_idx])
+                self.paths = np.delete(self.paths, max(rand_idx))
+                self.paths = np.delete(self.paths, min(rand_idx))
 
         return np.array(pair_list), np.array(non_pair_list)
 
@@ -90,10 +77,10 @@ class SubsetClass():
 
         pair_list, non_pair_list = self.draw_matches()
 
-        for i in range(0, self.num_of_val_sets):
+        for val_set in range(0, self.num_of_val_sets):
             temp_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
             temp_pair_list = pair_list[temp_pair_list_idx]
 
             temp_non_pair_list_idx = default_rng().choice(len(pair_list), self.num_of_matches, replace=False)
             temp_non_pair_list = non_pair_list[temp_non_pair_list_idx]
-            self.write_to_file(temp_pair_list, temp_non_pair_list, i)
+            self.write_to_file(temp_pair_list, temp_non_pair_list, val_set)
