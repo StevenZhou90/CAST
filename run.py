@@ -1,4 +1,5 @@
-from dataset_builder.data_splitter_class import FilterClass 
+from dataset_builder.filter import FilterClass 
+from dataset_builder.subset_tool import SubsetClass
 
 '''Add the path to your attribute dataset here: Make sure it is a npy file'''
 attrARR_path = './data/attrArr1000.npy'
