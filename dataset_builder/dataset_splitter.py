@@ -2,7 +2,6 @@ import numpy as np
 import csv
 import os
 
-'''need function to log inputs'''
 class FilterClass():
     def __init__(self, attr_paths, path_paths, columns=None, train_set = None):
         self.attrArr = np.load(attr_paths)
@@ -34,7 +33,6 @@ class FilterClass():
         return ind_list
 
     '''Function that create index over values array for whole array'''
-    '''Delete if above accopmlishes task'''
     def make_rank_old(self, arr):
         attr_list = []
         for i in range(0,arr.shape[1]):
@@ -62,8 +60,8 @@ class FilterClass():
             upper_bound_rank_idx = round((self.attrArr.shape[0]*upper_range/100))-1
             lower_bound_rank_idx = round((self.attrArr.shape[0]*lower_range/100))
             rank_section = ranked_list[lower_bound_rank_idx:upper_bound_rank_idx]
-            mask = np.array(self.attrArr.shape[0], dtype=bool)
-            mask = mask[rank_section]
+            mask = np.zeros(self.attrArr.shape[0], dtype=bool)
+            mask[rank_section] = True
         
         return mask
 
@@ -98,7 +96,7 @@ class FilterClass():
 
         mask = ~mask
         self.current_mask = self.current_mask * mask
-        
+
     def run(self, tup_list):
         if self.train_set!=None:
             self.filter_train_set(self.train_set)
