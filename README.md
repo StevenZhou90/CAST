@@ -54,28 +54,6 @@ upzip race_gender.zip
 
 ### Subsample Verification Sets
 
-Found in file CAST/dataset_builder/subset_tool.py
-'''
-'''Add the path to your attribute dataset here: Make sure it is a npy file'''
-attrARR_path = 
-
-'''Add the path to your list of image paths here: Make sure it is a npy file'''
-paths_path = 
-
-'''Add the path to a csv with all attribute column names'''
-columns = 
-
-'''OPTIONAL: Add indexes of training samples'''
-train_set = 
-
-filter_tool = FilterClass(attrARR_path, paths_path, columns=columns, train_set=train_set)
-
-'''Examples of tuple inputs'''
-attr1 = ('Heavy_Makeup', 'abs', 0, 100)
-attr2 = ('vitor_gender', 0)
-attr_list = [attr1, attr2]
-'''
-
 1. Go to the run.py file. Pass in the desired paths for the attribute array, the paths for each object, and an optional csv with the column names (if no csv exists, do not pass in a columns variable). Pass in a mask for the training indexes if desired
 2. Declare a list of tuples in attr_list. Each tuple will be taken as directions to filter by a certain attribute. The first item in the tuple should be the name of the attribute. 
    - If the attribute holds categorical data, then the tuple will be of length 2 with the second item being the class to filter for. 
