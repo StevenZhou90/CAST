@@ -54,8 +54,8 @@ upzip race_gender.zip
 
 ### Subsample Verification Sets
 
-1. Go to the run.py file. Pass in the desired paths for the attribute array, the paths for each object, and an optional csv with the column names (if no csv exists, do not pass in a columns variable). Pass in a mask for the training indexes if desired
-2. Declare a list of tuples in attr_list. Each tuple will be taken as directions to filter by a certain attribute. The first item in the tuple should be the name of the attribute. 
+1. Go to the run.py file. Pass in the desired paths for the attribute array, the paths for each object, and an optional csv with the column names (if no csv exists, do not pass in a columns variable, the first row will be passed in instead). Pass in a mask for the training indexes if desired
+2. Declare a list of tuples in attr_list. Each tuple will be taken as directions to filter by a certain attribute. The first item in the tuple should be the name of the attribute
    - If the attribute holds categorical data, then the tuple will be of length 2 with the second item being the class to filter for. 
    - If the attribute holds numerical data, the tuple will be of length 4. The second item will be either 'abs' or 'rank' which determines how the filter      tool will filter by aboslute values or percentile ranks respectivly. The next two items will the lower and upper bounds for the scale defined prior
 3. Now pass in the parameters for the SubsetClass creation
