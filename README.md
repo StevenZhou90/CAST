@@ -72,9 +72,6 @@ python run_eval.py --weights weights --arch architecture --sets_names set1,set2,
 ```
 The following architecture keys are implemented in the `models` directory: r18, r34, r50, r100, r200, mbf, mbf_large, vit_t, vit_s, vit_b. To use a different architecture, import the implementation to the model directory.
 
-### Subsample Training Sets
-```todo```
-
 
 ### Acknowledgment
 The research this repository supports is based upon work supported in part by the Office of the Director of National Intelligence (ODNI), Intelligence Advanced Research Projects Activity (IARPA), via [2022-21102100003]. The views and conclusions contained herein are those of the authors and should not be interpreted as necessarily representing the official policies, either expressed or implied, of ODNI, IARPA, or the U.S. Government.
